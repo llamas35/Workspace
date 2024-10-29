@@ -1,0 +1,32 @@
+1. Descargar el módulo JSON Converter
+Primero, necesitas descargar el archivo JsonConverter.bas, que es el módulo que permite a VBA interpretar el formato JSON. Puedes encontrar este módulo en el siguiente repositorio:
+
+Descargar JSON Converter
+Descarga el archivo y guárdalo en una ubicación en tu computadora.
+
+2. Importar el módulo JSON Converter en VBA
+Abre Excel y presiona ALT + F11 para abrir el editor de Visual Basic (VBA).
+En el editor de VBA, selecciona Archivo > Importar archivo.
+Busca y selecciona el archivo JsonConverter.bas que descargaste.
+Verás el módulo JsonConverter en el panel de la izquierda, dentro de "Módulos".
+3. Configuración del JSON Converter en tu macro
+Para que el JSON Converter funcione correctamente, asegúrate de agregar la siguiente línea en la parte superior de tu macro, antes del resto del código:
+
+vba
+Copy code
+' Necesario para el módulo JSON Converter
+Const JsonConverter_Version As String = "2.3.2" 
+4. Revisión de la macro para usar el JSON Converter
+Tu macro ya tiene el formato correcto para utilizar el JSON Converter en la línea donde parsea el JSON:
+
+vba
+Copy code
+Set json = JsonConverter.ParseJson(jsonResponse)
+5. Configuración de referencias (si es necesario)
+En algunos casos, es útil verificar que las referencias de Microsoft Scripting Runtime están activadas en VBA para evitar errores de objetos. Para asegurarte de que están activadas:
+
+En el editor de VBA, ve a Herramientas > Referencias.
+Marca la casilla de Microsoft Scripting Runtime.
+Presiona Aceptar.
+6. Probar la Macro
+Ahora puedes ejecutar la macro GetNVDData para verificar que todo funcione correctamente y que los datos de la API de NVD se muestren en la hoja de Excel.
