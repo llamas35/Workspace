@@ -1,0 +1,145 @@
+Sub GetCVEInfo()
+
+    Dim http As Object
+    Dim jsonResponse As String
+    Dim json As Object
+    Dim ws As Worksheet
+    Dim cveID As String
+    Dim url As String
+    Dim i As Long, j As Long
+    
+    ' Obtener el cveID del usuario
+    cveID = InputBox("Ingrese el cveID que desea buscar:", "Buscar CVE")
+    If cveID = "" Then
+        MsgBox "No se ingresó ningún cveID. La macro se detendrá."
+        Exit Sub
+    End If
+
+    ' Asignar la hoja donde se mostrarán los resultados
+    On Error GoTo SheetError
+    Set ws = ThisWorkbook.Sheets("cve")
+    On Error GoTo 0
+    
+    ' API URL para el cveID específico
+    url = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=" & cveID
+
+    ' Crear un objeto HTTP para hacer la solicitud a la API
+    Set http = CreateObject("MSXML2.XMLHTTP")
+    http.Open "GET", url, False
+    http.Send
+    
+    ' Verificar si la respuesta es válida
+    If http.Status <> 200 Then
+        MsgBox "Error en la solicitud a la API: " & http.Status
+        Exit Sub
+    End If
+    
+    ' Obtener y parsear la respuesta JSON
+    jsonResponse = http.responseText
+    Set json = JsonConverter.ParseJson(jsonResponse)
+    
+    ' Limpiar la hoja antes de insertar los datos nuevos
+    ws.Cells.Clear
+    
+    ' Insertar encabezados
+    ws.Cells(1, 1).Value = "CVE ID"
+    ws.Cells(1, 2).Value = "Publicado"
+    ws.Cells(1, 3).Value = "Última Modificación"
+    ws.Cells(1, 4).Value = "Descripción"
+    ws.Cells(1, 5).Value = "Métrica CVSS v3.1"
+    ws.Cells(1, 6).Value = "Métrica CVSS v2.0"
+    ws.Cells(1, 7).Value = "Referencias"
+    ws.Cells(1, 8).Value = "Debilidades"
+    ws.Cells(1, 9).Value = "Configuraciones"
+
+    ' Insertar datos en la hoja
+    i = 2
+    For Each vulnerability In json("vulnerabilities")
+        ws.Cells(i, 1).Value = vulnerability("cve")("id")
+        ws.Cells(i, 2).Value = vulnerability("cve")("published")
+        ws.Cells(i, 3).Value = vulnerability("cve")("lastModified")
+        
+        ' Obtener descripción
+        Dim desc As String
+        desc = ""
+        For Each description In vulnerability("cve")("descriptions")
+            desc = desc & description("value") & vbCrLf
+        Next description
+        ws.Cells(i, 4).Value = desc
+        
+        ' Obtener métricas CVSS v3.1
+        Dim cvss3 As String
+        cvss3 = ""
+        If Not IsEmpty(vulnerability("cve")("metrics")("cvssMetricV31")) Then
+            For Each metric In vulnerability("cve")("metrics")("cvssMetricV31")
+                cvss3 = cvss3 & "Base Score: " & metric("cvssData")("baseScore") & ", Severity: " & metric("cvssData")("baseSeverity") & vbCrLf
+            Next metric
+        End If
+        ws.Cells(i, 5).Value = cvss3
+        
+        ' Obtener métricas CVSS v2.0
+        Dim cvss2 As String
+        cvss2 = ""
+        If Not IsEmpty(vulnerability("cve")("metrics")("cvssMetricV2")) Then
+            For Each metric In vulnerability("cve")("metrics")("cvssMetricV2")
+                cvss2 = cvss2 & "Base Score: " & metric("cvssData")("baseScore") & ", Severity: " & metric("baseSeverity") & vbCrLf
+            Next metric
+        End If
+        ws.Cells(i, 6).Value = cvss2
+        
+        ' Obtener referencias
+        Dim references As String
+        references = ""
+        For Each reference In vulnerability("cve")("references")
+            references = references & reference("url") & vbCrLf
+        Next reference
+        ws.Cells(i, 7).Value = references
+        
+        ' Obtener debilidades (Weaknesses)
+        Dim weaknesses As String
+        weaknesses = ""
+        If Not IsEmpty(vulnerability("cve")("weaknesses")) Then
+            For Each weakness In vulnerability("cve")("weaknesses")
+                weaknesses = weaknesses & weakness("description")(1)("value") & vbCrLf
+            Next weakness
+        End If
+        ws.Cells(i, 8).Value = weaknesses
+        
+        ' Obtener configuraciones (Configurations)
+        Dim configurations As String
+        configurations = ""
+        If Not IsEmpty(vulnerability("cve")("configurations")) Then
+            For Each config In vulnerability("cve")("configurations")
+                For Each Node In config("nodes")
+                    configurations = configurations & "Operator: " & Node("operator") & ", "
+                    For Each cpeMatch In Node("cpeMatch")
+                        configurations = configurations & "Criteria: " & cpeMatch("criteria") & vbCrLf
+                    Next cpeMatch
+                Next Node
+            Next config
+        End If
+        ws.Cells(i, 9).Value = configurations
+        
+        ' Insertar una fila en blanco para separar cada conjunto de datos
+        i = i + 2
+    Next vulnerability
+
+    MsgBox "Datos obtenidos correctamente para " & cveID
+
+    Exit Sub
+
+' Manejo de errores
+SheetError:
+    MsgBox "Error: No se encontró la hoja 'cve'. Verifica el nombre de la hoja."
+    Exit Sub
+
+APIError:
+    MsgBox "Error al hacer la solicitud a la API. Verifica tu conexión a Internet o la URL."
+    Exit Sub
+
+ParseError:
+    MsgBox "Error al parsear la respuesta JSON. Verifica que la respuesta de la API sea válida."
+    Exit Sub
+
+End Sub
+
