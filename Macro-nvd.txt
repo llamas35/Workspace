@@ -1,0 +1,118 @@
+Sub GetNVDData()
+
+    Dim http As Object
+    Dim jsonResponse As String
+    Dim json As Object
+    Dim nvdResults As Object
+    Dim ws As Worksheet
+    Dim i As Long
+    Dim url As String
+    Dim vulnerability As Object
+    Dim keyword As String
+    Dim months As Integer
+    Dim startDate As String
+    Dim currentDate As String
+
+    ' Obtener la palabra clave del usuario
+    keyword = InputBox("Ingrese la palabra de búsqueda:", "Buscar Vulnerabilidad")
+    If keyword = "" Then
+        MsgBox "No se ingresó ninguna palabra de búsqueda. La macro se detendrá."
+        Exit Sub
+    End If
+    
+    ' Obtener el rango de tiempo en meses (máximo 4 meses)
+    months = InputBox("Ingrese el rango de tiempo en meses (máximo 4):", "Rango de tiempo (meses)")
+    If IsNumeric(months) = False Or months <= 0 Or months > 4 Then
+        MsgBox "Por favor, ingrese un número válido entre 1 y 4 para el rango de tiempo."
+        Exit Sub
+    End If
+
+    ' Calcular la fecha de inicio y fin, asegurando que no excedan los 120 días
+    currentDate = Format(Date, "yyyy-mm-dd") & "T23:59:59.000Z"
+    startDate = Format(DateAdd("m", -months, Date), "yyyy-mm-dd") & "T00:00:00.000Z"
+
+    ' Asignar la hoja llamada "nvd"
+    On Error GoTo SheetError
+    Set ws = ThisWorkbook.Sheets("nvd")
+    On Error GoTo 0
+    
+    ' API URL con parámetros dinámicos
+    url = "https://services.nvd.nist.gov/rest/json/cves/2.0?keywordsearch=" & keyword & _
+          "&lastModStartDate=" & startDate & "&lastModEndDate=" & currentDate
+    
+    ' Mostrar la URL para verificarla
+    Debug.Print "URL generada: " & url
+    MsgBox "URL generada: " & url ' Muestra la URL para revisión
+
+    ' Crear un objeto HTTP para hacer la solicitud a la API
+    Set http = CreateObject("MSXML2.XMLHTTP")
+    
+    ' Hacer la solicitud GET
+    On Error GoTo APIError
+    http.Open "GET", url, False
+    http.Send
+    On Error GoTo 0
+    
+    ' Verificar si la respuesta es válida
+    If http.Status <> 200 Then
+        MsgBox "Error en la solicitud a la API: " & http.Status
+        Exit Sub
+    End If
+    
+    ' Obtener la respuesta
+    jsonResponse = http.responseText
+    
+    ' Depurar la respuesta para ver si contiene información
+    Debug.Print jsonResponse
+    
+    ' Parsear la respuesta JSON
+    On Error GoTo ParseError
+    Set json = JsonConverter.ParseJson(jsonResponse)
+    On Error GoTo 0
+    
+    ' Obtener los resultados del objeto JSON
+    Set nvdResults = json("vulnerabilities")
+    
+    ' Limpiar la hoja antes de insertar los datos nuevos
+    ws.Cells.Clear
+    
+    ' Insertar encabezados
+    ws.Cells(1, 1).Value = "ID"
+    ws.Cells(1, 2).Value = "Descripción"
+    
+    ' Insertar datos en la hoja
+    i = 2
+    For Each vulnerability In nvdResults
+        ws.Cells(i, 1).Value = vulnerability("cve")("id")
+        
+        ' Verificar si hay descripciones disponibles
+        If vulnerability("cve")("descriptions").Count > 0 Then
+            ws.Cells(i, 2).Value = vulnerability("cve")("descriptions")(1)("value")
+        Else
+            ws.Cells(i, 2).Value = "Descripción no disponible"
+        End If
+        Debug.Print "ID: " & vulnerability("cve")("id")
+        Debug.Print "Descripción: " & ws.Cells(i, 2).Value
+        i = i + 1
+    Next vulnerability
+
+    MsgBox "Datos obtenidos correctamente"
+
+    Exit Sub
+
+' Manejo de errores
+SheetError:
+    MsgBox "Error: No se encontró la hoja 'nvd'. Verifica el nombre de la hoja."
+    Exit Sub
+
+APIError:
+    MsgBox "Error al hacer la solicitud a la API. Verifica tu conexión a Internet o la URL."
+    Exit Sub
+
+ParseError:
+    MsgBox "Error al parsear la respuesta JSON. Verifica que la respuesta de la API sea válida."
+    Exit Sub
+
+End Sub
+
+
