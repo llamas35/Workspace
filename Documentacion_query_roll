@@ -1,0 +1,23 @@
+Documentarion
+###############
+- name: Ejecuta un procedimiento almacenado en SQL Server y obtiene su contenido
+  ansible.windows.win_shell: |
+    # Definir variables desde Ansible
+    $SqlInstance = "{{ sql_instance }}"       # Nombre o dirección del servidor SQL
+    $Port = "2431"                            # Puerto SQL Server
+    $Database = "{{ sql_dbname }}"            # Nombre de la base de datos
+    $User = "{{ sql_user }}"                  # Usuario con permisos adecuados
+    $Password = "{{ sql_pass }}"              # Contraseña del usuario
+    $Esquina = "{{ sql_esquina }}"            # Esquema de la base de datos (ej. dbo)
+    $StoreProcedure = "{{ sp_query }}"        # Procedimiento almacenado a consultar
+
+    # Construcción del query
+    $Query = "EXEC $Database.$Esquina.sp_helptext $StoreProcedure"
+
+    # Ejecutar el query en SQL Server
+    Invoke-Sqlcmd -ServerInstance "$SqlInstance,$Port" `
+                  -Database $Database `
+                  -Username $User `
+                  -Password $Password `
+                  -Query $Query
+  register: sql_result   # Guardar la salida en una variable para su uso posterior
