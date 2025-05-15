@@ -1,0 +1,14 @@
+# Ruta del archivo original
+$archivo = "C:\ruta\archivo.txt"
+
+# Leer todo el contenido
+$contenido = Get-Content $archivo -Raw
+
+# Expresión regular para extraer lo que está entre "> y </6>"
+$matches = [regex]::Matches($contenido, '">(.+?)</6>"')
+
+# Extraer solo los valores encontrados
+$resultados = $matches | ForEach-Object { $_.Groups[1].Value }
+
+# Guardar en CSV
+$resultados | Export-Csv -Path "C:\ruta\extraidos.csv" -NoTypeInformation -Encoding UTF8
